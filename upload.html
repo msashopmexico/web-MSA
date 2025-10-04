@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subir diseño - MSA Shop</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>MSA Shop México</h1>
+    <div class="header-buttons">
+      <button onclick="window.location.href='index.html'">Inicio</button>
+      <button onclick="window.location.href='carrito.html'">🛒 Carrito</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="producto">
+      <h2>Sube tu diseño</h2>
+      <input type="file" id="fileInput" accept="image/png, image/jpg, image/jpeg">
+      <div id="previewContainer" style="margin-top:20px;">
+        <img id="preview" src="" style="max-width:300px; border:1px solid #ccc; border-radius:8px;">
+      </div>
+      <button id="btnEnviar" class="agregar">Enviar Diseño</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-storage.js";
+    import * as emailjs from "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js";
+
+    const auth = getAuth();
+    const storage = getStorage();
+
+    const fileInput = document.getElementById("fileInput");
+    const preview = document.getElementById("preview");
+    let uploadedFileURL = "";
+
+    // Preview de la imagen
+    fileInput.addEventListener("change", e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!["image/png","image/jpeg","image/jpg"].includes(file.type)) {
+        alert("Solo PNG, JPG o JPEG permitidos");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        preview.src = reader.result;
+      }
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById("btnEnviar").addEventListener("click", async () => {
+      const file = fileInput.files[0];
+      if (!file) return alert("Selecciona un archivo primero");
+
+      const user = auth.currentUser;
+      if (!user) return alert("Debes iniciar sesión");
+
+      const storageRef = ref(storage, `diseños/${user.uid}/${file.name}`);
+      await uploadBytes(storageRef, file);
+      uploadedFileURL = await getDownloadURL(storageRef);
+
+      // Enviar correo con EmailJS
+      emailjs.init("PhV4Hp36EPOLiGe6t");
+      try {
+        await emailjs.send("service_4450mrz", "template_biyacaa", {
+          nombre: user.displayName,
+          email: user.email,
+          productos: "Camiseta Custom",
+          total: "$300 MXN",
+          linkImagen: uploadedFileURL,
+          fecha: new Date().toLocaleDateString(),
+          direccion: "N/A",
+          ciudad: "N/A",
+          codigo_postal: "N/A",
+          telefono: "N/A"
+        });
+        alert("✅ Diseño enviado y correo de confirmación enviado!");
+        fileInput.value = "";
+        preview.src = "";
+      } catch (error) {
+        console.error(error);
+        alert("❌ Error al enviar el correo");
+      }
+    });
+  </script>
+</body>
+</html>
